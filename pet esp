@@ -1,3 +1,8 @@
+if queue_on_teleport then
+    queue_on_teleport([[
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/Airbornite/Iem/main/pet%20esp"))()
+    ]])
+end
 local Players = game:GetService("Players")
 local TextChatService = game:GetService("TextChatService")
 
